@@ -1,0 +1,216 @@
+//
+//------------------------------------------------------------------------
+//   F100-EQ Engine
+//-----------------------------------------------------------------------
+//
+
+
+cout << "\t------------------------------\n"
+     << "\t  Pratt & Whitney F100        \n"
+     << "\t------------------------------\n\n";
+
+//--------------------------------------------------------
+// set the thermo package
+//--------------------------------------------------------
+setThermoPackage("GasTbl");
+
+//--------------------------------------------------------
+// include the standard intepretted things
+//--------------------------------------------------------
+
+#include <InterpIncludes.ncp>            
+#include "ncp.view"
+#include "bleed_macros.fnc"
+
+//#include "NewDuct.int"
+
+//-------------------------------------------------------------------
+// #include the definition file for the user defined engine
+// performance component
+//-------------------------------------------------------------------
+#include "EngPerf.int" ;
+  
+
+//--------------------------------------------------------
+// MODEL DEFINITION 
+//--------------------------------------------------------
+
+
+Element FlightConditions AMBIENT {
+
+  alt = 0.0;        //ft
+  MN = 0.01;        //       	(mach number)
+  W = 245.82;       //lbm/s 	(airflow)     ( W = 111.5 kg/s )
+} 
+
+Element Inlet INLET {
+
+  eRamBase = 0.995;  	 //		(unscaled ram pressure recovery?)  (Inlet efficiency??)
+} 
+
+Element Compressor LPC_Fan {
+
+	#include "fan.map" ; //Compressor sub-element map	
+        
+	S_map.effDes = 0.83; //Scalar on adiabatic effciency at design
+    S_map.PRdes = 3.55;  //Pressure ratio design scalar, passed to S_eff
+
+}
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Element Splitter ForkinRoad {
+    BPR =  .36;
+}
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// > A <
+
+Element Duct Bypass {
+	dPqPbase = 0.015;	//	(unscaled normalized pressure drop ( delta P/P )
+}
+
+//Element Nozzle BypassNozzle {
+//	Cfg = 0.995;
+//	PsExhName = "AMBIENT.Fl_O.Ps";
+//}
+
+//Element FlowEnd BypNozSink {
+//
+//}
+
+//Element Compressor HPC_1 {
+//	#include "hpc.map";
+//	S_map.effDes = 0.895 ; 	//Scalar on adiabatic effciency at design
+//	S_map.PRdes = 5.692 ;	//Pressure ratio design scalar, passed to S_eff
+//}
+
+Element Compressor HPC_2 {
+	#include "hpc.map" ; 	// Compressor sub element map
+	S_map.effDes = 0.895 ;	//Scalar on adiabatic effciency at design
+	S_map.PRdes = 9.127 ;	//Pressure ratio design scalar, passed to S_eff
+
+	
+InterStageBleedOutPort  BLHPC_TEnt {                         
+    fracBldW = 0.12;
+  }
+InterStageBleedOutPort  BLHPC_TExt {
+    fracBldW = 0.08;
+  }	
+	
+}
+
+Element FuelStart BRNFuel{
+  //--------------------------------------
+  // using default fuel specs
+  //--------------------------------------
+}
+
+Element Burner BRN{
+  FAR = 0.03;
+}
+
+Element Turbine HPT {
+	#include "hpt.map";  //High Pressure Turbine Map
+	S_map.effDes = 0.90;
+	
+	InterStageBleedInPort BLHPT_TEnt {
+	}
+	InterStageBleedInPort BLHPT_TExt {
+	}
+}
+
+Element Turbine LPT {
+	#include "lpt.map"  //Low Pressure Turbine Map
+	S_map.effDes = 0.94;
+}
+
+Element Mixer Mix {
+	//add nondefault values
+}
+
+Element FuelStart ABRNFuel{
+  //-------------------------------------
+  // using default fuel specs
+  //-------------------------------------
+}
+
+Element Burner ABRN{
+
+  FAR = 0.03;
+
+}
+
+Element Nozzle MainNoz {
+	Cfg = 0.995;
+	PsExhName = "AMBIENT.Fl_O.Ps";
+	
+}
+
+Element FlowEnd MainNozSink {
+	
+}
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// Put shafts in the model
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Element Shaft LPShf {
+	ShaftInputPort LPC_FAN, LPT ;
+	Nmech = 11000.0;
+    fracLoss = .03;
+	inertia = 1.0; // inertia is only needed for transient analysis
+}
+
+Element Shaft HPShf {
+	ShaftInputPort HPT, HPC_2 ; //HPC_1 Removed
+    Nmech = 14000.0;
+    fracLoss = .02;
+	inertia = 1.0;
+//cout << inertia.units <<endl; 
+//quit();
+}
+
+Element EngPerf PERF{
+} 
+
+//___________________________________________________________
+// Primary Flow Connections
+//_____________________________________________________________
+
+linkPorts( "AMBIENT.Fl_O", "INLET.Fl_I", "FL0" );
+linkPorts( "INLET.Fl_O", "ForkinRoad.Fl_I", "FL1" );
+
+linkPorts( "ForkinRoad.Fl_02", "Bypass.Fl_I", "FL2A" );
+linkPorts( "ForkinRoad.Fl_01", "LPC_Fan.Fl_I", "FL2B" );
+
+linkPorts( "Bypass.Fl_O", "Mix.Fl_I2", "FL3A" );
+
+linkPorts( "LPC_Fan.Fl_O", "HPC_2.Fl_I", "FL3B" );
+//linkPorts( "HPC_1.Fl_O", "HPC_2.Fl_I", "FL4B" ) ;
+linkPorts( "HPC_2.Fl_O", "BRN.Fl_I", "FL5B" ) ;
+linkPorts( "BRNFuel.Fu_O", "BRN.Fu_I", "Fu01" );
+linkPorts( "BRN.Fl_O", "HPT.Fl_I", "FL6B" );
+linkPorts( "HPT.Fl_O", "LPT.Fl_I", "FL7B" );
+linkPorts( "LPT.Fl_O", "Mix.Fl_I1", "FL8B");
+
+linkPorts( "Mix.Fl_O", "ABRN.Fl_I", "FL9C" );
+linkPorts( "ABRNFuel.Fu_O", "ABRN.Fu_I", "Fu02" );
+linkPorts( "ABRN.Fl_O", "MainNoz.Fl_I", "FL10C" );
+linkPorts( "MainNoz.Fl_O", "MainNozSink.Fl_I", "FL11C" );
+
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// Bleed port linkage
+// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+linkPorts( "HPC_2.BLHPC_TEnt", "HPT.BLHPT_TEnt", "BL1");
+linkPorts( "HPC_2.BLHPC_TExt", "HPT.BLHPT_TExt", "BL2");
+
+//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+// Shaft connections
+// $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+linkPorts("LPT.Sh_O", "LPShf.LPT", "LP1");
+linkPorts("LPC_Fan.Sh_O", "LPShf.LPC_FAN", "LP2");
+//linkPorts("HPC_1.Sh_O", "HPShf.HPC_1", "HP1");
+linkPorts("HPC_2.Sh_O", "HPShf.HPC_2", "HP2");
+linkPorts("HPT.Sh_O", "HPShf.HPT", "HP3");
+
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

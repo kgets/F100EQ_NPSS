@@ -1,0 +1,53 @@
+
+//------------------------------------------------------------------------
+// Load F100 model
+//------------------------------------------------------------------------
+#include "F100EQ.mdl"
+
+#ifdef REGTEST then
+ncpView.isActive = FALSE;
+caseReportOut.filename = "cout";
+#endif
+
+//------------------------------------------------------------------------
+// Set the entire model into DESIGN mode and tell the system to
+// set the solver up
+//------------------------------------------------------------------------
+setOption( "switchDes", "DESIGN" );   // set Model mode to design
+autoSolverSetup();
+
+//------------------------------------------------------------------------
+// Run the model
+//------------------------------------------------------------------------
+run();
+
+//------------------------------------------------------------------------
+// Tell viewers to take a snapshot of the model
+//------------------------------------------------------------------------
+// caseReport.update(); // adds data to the buffer for the caseColumn viewer
+ ncpView.display();  // outputs the data for the default page viewer
+
+//------------------------------------------------------------------------
+// set the model to OFFDESIGN Mode
+// also tell the solver to set itself up
+//------------------------------------------------------------------------
+//setOption( "switchDes", "OFFDESIGN" ) ;
+//autoSolverSetup();
+
+//------------------------------------------------------------------------
+// run the model
+//------------------------------------------------------------------------
+//CASE = CASE + 1;
+//run();
+
+//------------------------------------------------------------------------
+// Tell viewers to take a snapshot of the model
+//------------------------------------------------------------------------
+// caseReport.update(); // adds data to the buffer for the caseColumn viewer
+ //ncpView.display();  // outputs the data for the default page viewer
+
+//------------------------------------------------------------------------
+// Dump the column viewer out
+//------------------------------------------------------------------------
+// caseReport.display(); // outputs the data for this caseColumn viewer
+
